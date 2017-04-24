@@ -1,0 +1,87 @@
+service: userService
+custom:
+  account: 699202342594
+
+provider:
+  name: aws
+  runtime: nodejs4.3
+
+# you can overwrite defaults here
+  stage: dev
+  region: us-east-1
+
+# you can add statements to the Lambda function's IAM Role here
+  iamRoleStatements:
+  - Effect: Allow
+    Action:
+      - dynamodb:*
+    Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:${self:custom.account}:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+# you can define service wide environment variables here
+#table would be userService-dev
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+
+# you can add packaging information here
+#package:
+#  include:
+#    - include-me.js
+#    - include-me-dir/**
+#  exclude:
+#    - exclude-me.js
+#    - exclude-me-dir/**
+
+functions:
+  login:
+    handler: handler.login
+    events:
+       - http:
+          path: user/login
+          method: post
+  
+  register:
+    handler: handler.register
+    events:
+       - http:
+          path: user/register
+          method: post
+
+  getName:
+    handler: handler.getName
+    events:
+       - http:
+          path: getName
+          method: post
+          authorizer: authorizerFunc
+
+  authorizerFunc:
+    handler: handler.authorizerFunc
+    
+#      - s3: ${env:BUCKET}
+#      - schedule: rate(10 minutes)
+#      - sns: greeter-topic
+#      - stream: arn:aws:dynamodb:region:XXXXXX:table/foo/stream/1970-01-01T00:00:00.000
+#      - alexaSkill
+#      - iot:
+#          sql: "SELECT * FROM 'some_topic'"
+
+#    Define function environment variables here
+#    environment:
+#      variable2: value2
+
+# you can add CloudFormation resource templates here
+resources:
+  Resources:
+    usersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        AttributeDefinitions:
+        - AttributeName: username
+          AttributeType: S
+        KeySchema:
+        - AttributeName: username
+          KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
